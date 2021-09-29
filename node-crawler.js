@@ -14,7 +14,7 @@ const puppeteer = require("puppeteer");
 */
 
 const URL_base = "https://research.binance.com/en/projects";
-const endpoint = "/agrello";
+const endpoint = process.argv[2] || "/aave-protocol"; // also tried "/agrello"
 
 const fetchData = async () => {
   const browser = await puppeteer.launch();
