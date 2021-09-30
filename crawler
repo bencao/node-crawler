@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+
+const { parse } = require("node-html-parser");
+const puppeteer = require("puppeteer");
+
+function printUsage() {
+  console.log(`
+Usage: crawler aave-protocol
+
+{
+  tokenSummary: {
+    holdersMakeMoney: {
+      in: 22,
+      ...
+    }
+  }
+}
+  `.trim());
+}
+
+const URL_BASE = "https://research.binance.com/en/projects/";
+const projectId = process.argv[2];
+
+if (!projectId) {
+  printUsage();
+  process.exit(1);
+}
+
+const fetchProjectInfo = async () => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(`${URL_BASE}${projectId}`);
+  const html = await page.$eval('#holders-making-money-at-current-price', e => e.outerHTML);
+
+  const root = parse(html);
+  await browser.close();
+  const values = root.querySelectorAll('div .value').map(node => node.innerText);
+
+  const holdersMakeMoney = ['in', 'at', 'out'].reduce((acc, label, idx) => {
+    acc[label] = parseInt(values[idx], 10);
+
+    return acc;
+  }, {});
+
+  return {
+    tokenSummary: {
+      holdersMakeMoney
+    }
+  };
+}
+
+fetchProjectInfo()
+  .then(data => {
+    console.log(data)
+  })
+  .catch(err => {
+    console.error(err.message);
+    process.exit(1);
+  });
