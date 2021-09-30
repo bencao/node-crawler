@@ -1,8 +1,30 @@
-# node-crawler
+# Binance Project Crawler
+
+## Installation
+
+1. Install [NodeJS](https://nodejs.org/en/)
+2. Install yarn, by running `npm i -g yarn`
+3. Install packages, `yarn`
 
 ## Usage
 
-`node node-crawler.js [endpoint]`
+```
+Usage: crawler aave-protocol
+
+{
+  tokenSummary: {
+    holdersMakeMoney: {
+      in: 22,
+      ...
+    }
+  }
+}
+```
 
 ## Testing
-- manually tested "/agrello" and "/aave-protocol"
+
+```
+./crawler
+./crawler aave-protocol
+./crawler agrello
+```
