@@ -71,7 +71,7 @@ const fetchHTML = async (selector, projectId) => {
     e => e.outerHTML)
       .catch(error => {
         if (error.message === 'Error: failed to find element matching selector "#holders-making-money-at-current-price"') {
-
+          return;
         } else {
           throw new Error(error)
         }
