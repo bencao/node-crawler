@@ -9,15 +9,42 @@
 ## Usage
 
 ```
-Usage: crawler aave-protocol
+Usage: by project name, ex:
+
+$ crawler aave-protocol
 
 {
-  tokenSummary: {
-    holdersMakeMoney: {
-      in: 22,
-      ...
-    }
+  aave-protocol: {
+    tokenSummary: {
+      holdersMakeMoney: {
+        in: 22,
+        ...
+      }
+    },
+    hasInfo: true
   }
+}
+
+OR
+
+All projects:
+
+$ crawler all-binance-projects
+
+{
+  aave-protocol: {
+    tokenSummary: {
+      ...
+    },
+    hasInfo: true,
+  },
+  agrello: {
+    tokenSummary: {
+      ...
+    },
+    hasInfo: true,
+  },
+  ...
 }
 ```
 

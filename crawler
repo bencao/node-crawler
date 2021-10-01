@@ -2,23 +2,51 @@
 
 const { parse } = require("node-html-parser");
 const puppeteer = require("puppeteer");
+const fs = require('fs')
 
 function printUsage() {
   console.log(`
-Usage: crawler aave-protocol
+Usage: by project name, ex:
+
+$ crawler aave-protocol
 
 {
-  tokenSummary: {
-    holdersMakeMoney: {
-      in: 22,
-      ...
-    }
+  aave-protocol: {
+    tokenSummary: {
+      holdersMakeMoney: {
+        in: 22,
+        ...
+      }
+    },
+    hasInfo: true
   }
+}
+
+OR
+
+All projects:
+
+$ crawler all-binance-projects
+
+{
+  aave-protocol: {
+    tokenSummary: {
+      ...
+    },
+    hasInfo: true,
+  },
+  agrello: {
+    tokenSummary: {
+      ...
+    },
+    hasInfo: true,
+  },
+  ...
 }
   `.trim());
 }
 
-const URL_BASE = "https://research.binance.com/en/projects/";
+const URL_BASE = "https://research.binance.com/en/projects";
 const projectId = process.argv[2];
 
 if (!projectId) {
@@ -26,14 +54,86 @@ if (!projectId) {
   process.exit(1);
 }
 
-const fetchProjectInfo = async () => {
+const fetchHTML = async (selector, projectId) => {
+  let url;
+  if (!projectId) {
+    url = URL_BASE;
+  } else {
+    url = `${URL_BASE}/${projectId}`;
+  }
+
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
-  await page.goto(`${URL_BASE}${projectId}`);
-  const html = await page.$eval('#holders-making-money-at-current-price', e => e.outerHTML);
+  await page.goto(url);
+
+  const html = await page.$eval(
+    selector, 
+    e => e.outerHTML)
+      .catch(error => {
+        if (error.message === 'Error: failed to find element matching selector "#holders-making-money-at-current-price"') {
+
+        } else {
+          throw new Error(error)
+        }
+      });
+  await browser.close();
+
+  return html;
+}
+
+const writeFile = (nameMap) => {
+  const fileName = "binance-projects.json";
+  fs.writeFile(fileName, JSON.stringify(nameMap), (err) => {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log(`successfully wrote file to ${fileName}`);
+    }
+  });
+}
+
+const fetchProjectNames = async (nameMap) => {
+  const html = await fetchHTML('#__next');
+  const root = parse(html);
+  const values = root.querySelectorAll('a.researchCard');
+
+  values.forEach(value => {
+    nameMap[value._attrs.href.slice(13)] = {};
+  })
+  return nameMap;
+}
+
+const fetchAllProjectInfo = async () => {
+  const nameMap = {};
+  const NUMBER_TO_FETCH = 5;
+  const DELAY_TIME_IN_MILL = 500;
+  
+  await fetchProjectNames(nameMap);
+  const projects = Object.keys(nameMap);
+  for (let index = 0; index < NUMBER_TO_FETCH; index++) {
+    await fetchProjectInfo(projects[index], nameMap);
+    setTimeout(() => {}, DELAY_TIME_IN_MILL);
+  }
+
+  writeFile(nameMap);
+  return nameMap;
+}
+
+const fetchProjectInfo = async (projectId, nameMap) => {
+  if (!nameMap) nameMap = {
+    [projectId]: {}
+  };
+
+  console.log(`Fetching data for ${URL_BASE}/${projectId}`);
+  const html = await fetchHTML('#holders-making-money-at-current-price', projectId)
+
+  if (!html) {
+    console.log(`No making money data for ${URL_BASE}/${projectId}`);
+    nameMap[projectId].hasInfo = false;
+    return;
+  }
 
   const root = parse(html);
-  await browser.close();
   const values = root.querySelectorAll('div .value').map(node => node.innerText);
 
   const holdersMakeMoney = ['in', 'at', 'out'].reduce((acc, label, idx) => {
@@ -42,14 +142,14 @@ const fetchProjectInfo = async () => {
     return acc;
   }, {});
 
-  return {
-    tokenSummary: {
-      holdersMakeMoney
-    }
-  };
+  nameMap[projectId].tokenSummary = holdersMakeMoney;
+  nameMap[projectId].hasInfo = true;
+
+  return nameMap;
 }
 
-fetchProjectInfo()
+if (projectId === "all-binance-projects") {
+  fetchAllProjectInfo()
   .then(data => {
     console.log(data)
   })
@@ -57,3 +157,16 @@ fetchProjectInfo()
     console.error(err.message);
     process.exit(1);
   });
+} else {
+  fetchProjectInfo(projectId)
+    .then(data => {
+      console.log(data)
+    })
+    .catch(err => {
+      console.error(err.message);
+      process.exit(1);
+    });
+}
+
+
+
